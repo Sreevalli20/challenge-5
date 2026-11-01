@@ -1,0 +1,6 @@
+{
+  "name": "CELEBRATE — Intelligent Event Planner",
+  "description": "Comprehensive event planning suite with real budget tracking, guest RSVPs, vendor discovery, timeline tasks, invitations, and contextual AI event assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
