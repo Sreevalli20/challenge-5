@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}{% if event_id %}Edit Event{% else %}Create Event{% endif %} — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1>{% if event_id %}Edit Event{% else %}Create New Event{% endif %}</h1>
+        <p class="form-subtitle">Tell us about your celebration and we'll help you plan every detail</p>
+    </div>
+
+    <form id="event-form" class="event-form">
+        <div class="form-progress">
+            <div class="progress-step active" data-step="1">
+                <span class="step-number">1</span>
+                <span class="step-label">Basic Info</span>
+            </div>
+            <div class="progress-step" data-step="2">
+                <span class="step-number">2</span>
+                <span class="step-label">Details</span>
+            </div>
+            <div class="progress-step" data-step="3">
+                <span class="step-number">3</span>
+                <span class="step-label">Preferences</span>
+            </div>
+            <div class="progress-step" data-step="4">
+                <span class="step-number">4</span>
+                <span class="step-label">Review</span>
+            </div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div class="form-step active" data-step="1">
+            <h2>Basic Information</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name">Event Name *</label>
+                    <input type="text" id="name" name="name" required placeholder="e.g., Sarah's 30th Birthday">
+                </div>
+                <div class="form-group">
+                    <label for="category">Event Category *</label>
+                    <select id="category" name="category" required>
+                        <option value="">Select category</option>
+                        <option value="birthday">Birthday</option>
+                        <option value="wedding">Wedding</option>
+                        <option value="engagement">Engagement</option>
+                        <option value="college_festival">College Festival</option>
+                        <option value="corporate">Corporate Event</option>
+                        <option value="anniversary">Anniversary</option>
+                        <option value="baby_shower">Baby Shower</option>
+                        <option value="graduation">Graduation</option>
+                        <option value="family_gathering">Family Gathering</option>
+                        <option value="community">Community Event</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Event Date *</label>
+                    <input type="date" id="date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="time">Event Time *</label>
+                    <input type="time" id="time" name="time" required>
+                </div>
+                <div class="form-group full-width">
+                    <label for="location">Location *</label>
+                    <input type="text" id="location" name="location" required placeholder="e.g., Grand Ballroom, Hilton Hotel, New York">
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" disabled>Previous</button>
+                <button type="button" class="btn btn-primary" onclick="nextStep(1)">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Details -->
+        <div class="form-step" data-step="2">
+            <h2>Event Details</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="guest_count">Expected Guest Count *</label>
+                    <input type="number" id="guest_count" name="guest_count" required min="1" placeholder="50">
+                </div>
+                <div class="form-group">
+                    <label for="total_budget">Total Budget *</label>
+                    <input type="number" id="total_budget" name="total_budget" required min="0" step="0.01" placeholder="5000">
+                </div>
+                <div class="form-group">
+                    <label for="currency">Currency</label>
+                    <select id="currency" name="currency">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="CAD">CAD ($)</option>
+                        <option value="AUD">AUD ($)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="indoor_outdoor">Indoor or Outdoor</label>
+                    <select id="indoor_outdoor" name="indoor_outdoor">
+                        <option value="">Select preference</option>
+                        <option value="indoor">Indoor</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="both">Both / Flexible</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="prevStep(2)">Previous</button>
+                <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Preferences -->
+        <div class="form-step" data-step="3">
+            <h2>Preferences & Requirements</h2>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="theme">Preferred Theme</label>
+                    <input type="text" id="theme" name="theme" placeholder="e.g., Elegant Garden Party, Tropical Paradise">
+                </div>
+                <div class="form-group full-width">
+                    <label for="food_preferences">Food Preferences</label>
+                    <textarea id="food_preferences" name="food_preferences" rows="3" placeholder="e.g., Italian cuisine, vegetarian options, cocktail style"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="dietary_restrictions">Dietary Restrictions</label>
+                    <textarea id="dietary_restrictions" name="dietary_restrictions" rows="2" placeholder="e.g., gluten-free, nut-free, vegan options needed"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="decoration_preferences">Decoration Preferences</label>
+                    <textarea id="decoration_preferences" name="decoration_preferences" rows="2" placeholder="e.g., floral arrangements, balloon arch, elegant table settings"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="entertainment_preferences">Entertainment Preferences</label>
+                    <textarea id="entertainment_preferences" name="entertainment_preferences" rows="2" placeholder="e.g., live band, DJ, photo booth, games"></textarea>
+                </div>
+                <div class="form-group full-width">
+                    <label for="special_requirements">Special Requirements</label>
+                    <textarea id="special_requirements" name="special_requirements" rows="2" placeholder="Any special needs or requirements"></textarea>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="prevStep(3)">Previous</button>
+                <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Review -->
+        <div class="form-step" data-step="4">
+            <h2>Review Your Event</h2>
+            <div id="review-content" class="review-content">
+                <!-- Review content will be populated by JavaScript -->
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="prevStep(4)">Previous</button>
+                <button type="submit" class="btn btn-primary" id="submit-btn">Create Event</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentStep = 1;
+const totalSteps = 4;
+
+function showStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.progress-step').forEach(el => el.classList.remove('active'));
+    
+    // Show current step
+    document.querySelector(`.form-step[data-step="${step}"]`).classList.add('active');
+    
+    // Update progress
+    document.querySelectorAll('.progress-step').forEach(el => {
+        const stepNum = parseInt(el.dataset.step);
+        if (stepNum <= step) {
+            el.classList.add('active');
+        }
+    });
+    
+    currentStep = step;
+    
+    // Populate review if on step 4
+    if (step === 4) {
+        populateReview();
+    }
+}
+
+function nextStep(current) {
+    if (current < totalSteps) {
+        // Validate current step
+        if (!validateStep(current)) {
+            return;
+        }
+        showStep(current + 1);
+    }
+}
+
+function prevStep(current) {
+    if (current > 1) {
+        showStep(current - 1);
+    }
+}
+
+function validateStep(step) {
+    const currentStepEl = document.querySelector(`.form-step[data-step="${step}"]`);
+    const requiredFields = currentStepEl.querySelectorAll('[required]');
+    let valid = true;
+    
+    requiredFields.forEach(field => {
+        if (!field.value.trim()) {
+            field.classList.add('error');
+            valid = false;
+        } else {
+            field.classList.remove('error');
+        }
+    });
+    
+    if (!valid) {
+        alert('Please fill in all required fields');
+    }
+    
+    return valid;
+}
+
+function populateReview() {
+    const formData = new FormData(document.getElementById('event-form'));
+    const reviewHTML = `
+        <div class="review-section">
+            <h3>Basic Information</h3>
+            <p><strong>Name:</strong> ${formData.get('name')}</p>
+            <p><strong>Category:</strong> ${formData.get('category')}</p>
+            <p><strong>Date:</strong> ${formData.get('date')}</p>
+            <p><strong>Time:</strong> ${formData.get('time')}</p>
+            <p><strong>Location:</strong> ${formData.get('location')}</p>
+        </div>
+        <div class="review-section">
+            <h3>Event Details</h3>
+            <p><strong>Guest Count:</strong> ${formData.get('guest_count')}</p>
+            <p><strong>Budget:</strong> ${formData.get('currency')} ${formData.get('total_budget')}</p>
+            <p><strong>Indoor/Outdoor:</strong> ${formData.get('indoor_outdoor') || 'Not specified'}</p>
+        </div>
+        <div class="review-section">
+            <h3>Preferences</h3>
+            <p><strong>Theme:</strong> ${formData.get('theme') || 'Not specified'}</p>
+            <p><strong>Food:</strong> ${formData.get('food_preferences') || 'Not specified'}</p>
+            <p><strong>Dietary:</strong> ${formData.get('dietary_restrictions') || 'None'}</p>
+            <p><strong>Decoration:</strong> ${formData.get('decoration_preferences') || 'Not specified'}</p>
+            <p><strong>Entertainment:</strong> ${formData.get('entertainment_preferences') || 'Not specified'}</p>
+        </div>
+    `;
+    document.getElementById('review-content').innerHTML = reviewHTML;
+}
+
+// Form submission
+document.getElementById('event-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch('/api/events/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            alert('Event created successfully!');
+            window.location.href = `/events/${result.id}`;
+        } else {
+            const error = await response.json();
+            alert('Failed to create event: ' + error.detail);
+        }
+    } catch (error) {
+        alert('Failed to create event: ' + error.message);
+    }
+});
+</script>
+{% endblock %}

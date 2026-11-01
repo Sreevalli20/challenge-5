@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Timeline — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1>Event Timeline</h1>
+            <p class="page-subtitle">Track tasks and deadlines for your event</p>
+        </div>
+        <button onclick="showAddTaskModal()" class="btn btn-primary">Add Task</button>
+    </div>
+
+    <div class="task-stats">
+        <div class="task-stat">
+            <span class="stat-label">Total Tasks</span>
+            <span class="stat-value" id="stat-total">0</span>
+        </div>
+        <div class="task-stat completed">
+            <span class="stat-label">Completed</span>
+            <span class="stat-value" id="stat-completed">0</span>
+        </div>
+        <div class="task-stat pending">
+            <span class="stat-label">Pending</span>
+            <span class="stat-value" id="stat-pending">0</span>
+        </div>
+        <div class="task-stat overdue">
+            <span class="stat-label">Overdue</span>
+            <span class="stat-value" id="stat-overdue">0</span>
+        </div>
+    </div>
+
+    <div class="task-filters">
+        <select id="priority-filter" onchange="filterTasks()">
+            <option value="">All Priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+        </select>
+        <select id="status-filter" onchange="filterTasks()">
+            <option value="">All Status</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+        </select>
+    </div>
+
+    <div id="tasks-list" class="tasks-list">
+        <div class="loading-state">Loading tasks...</div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="task-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Task</h2>
+            <button onclick="closeTaskModal()" class="modal-close">&times;</button>
+        </div>
+        <form id="task-form">
+            <div class="form-group">
+                <label for="task-title">Title *</label>
+                <input type="text" id="task-title" name="title" required>
+            </div>
+            <div class="form-group">
+                <label for="task-description">Description</label>
+                <textarea id="task-description" name="description" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="task-due-date">Due Date</label>
+                <input type="date" id="task-due-date" name="due_date">
+            </div>
+            <div class="form-group">
+                <label for="task-priority">Priority</label>
+                <select id="task-priority" name="priority">
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeTaskModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const eventId = {{ event_id }};
+let tasks = [];
+
+async function loadTasks() {
+    try {
+        const response = await fetch(`/api/events/${eventId}`);
+        const event = await response.json();
+        
+        tasks = event.tasks;
+        
+        // Update stats
+        const now = new Date();
+        document.getElementById('stat-total').textContent = tasks.length;
+        document.getElementById('stat-completed').textContent = tasks.filter(t => t.completed).length;
+        document.getElementById('stat-pending').textContent = tasks.filter(t => !t.completed).length;
+        document.getElementById('stat-overdue').textContent = tasks.filter(t => 
+            !t.completed && t.due_date && new Date(t.due_date) < now
+        ).length;
+        
+        renderTasks(tasks);
+    } catch (error) {
+        console.error('Failed to load tasks:', error);
+    }
+}
+
+function renderTasks(taskList) {
+    const container = document.getElementById('tasks-list');
+    
+    if (taskList.length === 0) {
+        container.innerHTML = '<div class="empty-state-small">No tasks yet. Add tasks to track your event preparation.</div>';
+        return;
+    }
+    
+    // Sort by due date and priority
+    const sorted = [...taskList].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return new Date(a.due_date) - new Date(b.due_date);
+    });
+    
+    container.innerHTML = sorted.map(task => {
+        const isOverdue = !task.completed && task.due_date && new Date(task.due_date) < new Date();
+        const priorityClass = task.priority;
+        
+        return `
+            <div class="task-card priority-${priorityClass} ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}" 
+                 data-priority="${task.priority}" data-status="${task.completed ? 'completed' : 'pending'}">
+                <div class="task-checkbox">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                </div>
+                <div class="task-info">
+                    <h3>${task.title}</h3>
+                    ${task.description ? `<p class="task-description">${task.description}</p>` : ''}
+                    <div class="task-meta">
+                        ${task.due_date ? `<span class="task-due-date">Due: ${new Date(task.due_date).toLocaleDateString()}</span>` : ''}
+                        <span class="task-priority priority-${priorityClass}">${task.priority}</span>
+                        ${isOverdue ? '<span class="task-overdue">Overdue</span>' : ''}
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button onclick="deleteTask(${task.id})" class="btn btn-sm btn-danger">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function toggleTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: !task.completed })
+        });
+        
+        if (response.ok) {
+            loadTasks();
+        }
+    } catch (error) {
+        console.error('Failed to update task:', error);
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/tasks/${taskId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadTasks();
+        }
+    } catch (error) {
+        console.error('Failed to delete task:', error);
+    }
+}
+
+function showAddTaskModal() {
+    document.getElementById('task-modal').style.display = 'block';
+}
+
+function closeTaskModal() {
+    document.getElementById('task-modal').style.display = 'none';
+    document.getElementById('task-form').reset();
+}
+
+function filterTasks() {
+    const priorityFilter = document.getElementById('priority-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    
+    const filtered = tasks.filter(task => {
+        const matchesPriority = !priorityFilter || task.priority === priorityFilter;
+        const matchesStatus = !statusFilter || 
+            (statusFilter === 'completed' && task.completed) ||
+            (statusFilter === 'pending' && !task.completed);
+        return matchesPriority && matchesStatus;
+    });
+    
+    renderTasks(filtered);
+}
+
+document.getElementById('task-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeTaskModal();
+            loadTasks();
+        }
+    } catch (error) {
+        console.error('Failed to add task:', error);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadTasks);
+</script>
+{% endblock %}

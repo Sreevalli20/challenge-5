@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1>AI Event Assistant</h1>
+            <p class="page-subtitle">Get contextual help with your event planning</p>
+        </div>
+        <button onclick="resetConversation()" class="btn btn-secondary">Reset Conversation</button>
+    </div>
+
+    <div class="assistant-container">
+        <div class="chat-container" id="chat-container">
+            <div class="chat-message assistant">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <p>Hello! I'm your AI event assistant. I can help you with questions about your event budget, guests, timeline, and more. What would you like to know?</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <form id="chat-form" class="chat-form">
+                <input type="text" id="chat-input" placeholder="Ask about your event..." autocomplete="off">
+                <button type="submit" class="btn btn-primary" id="send-btn">Send</button>
+            </form>
+            <div class="quick-questions">
+                <button onclick="askQuestion('How can I reduce my budget?')" class="quick-question">How can I reduce my budget?</button>
+                <button onclick="askQuestion('What should I consider for food?')" class="quick-question">What should I consider for food?</button>
+                <button onclick="askQuestion('Help me with the timeline')" class="quick-question">Help me with the timeline</button>
+                <button onclick="askQuestion('Suggest theme ideas')" class="quick-question">Suggest theme ideas</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const eventId = {{ event_id }};
+
+function addMessage(content, isUser = false, source = null) {
+    const container = document.getElementById('chat-container');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isUser ? 'user' : 'assistant'}`;
+    
+    const avatar = isUser ? '👤' : '🤖';
+    const sourceLabel = source ? `<span class="message-source">(${source})</span>` : '';
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <p>${content}</p>
+            ${sourceLabel}
+        </div>
+    `;
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendMessage(question) {
+    if (!question.trim()) return;
+    
+    // Add user message
+    addMessage(question, true);
+    
+    // Clear input
+    document.getElementById('chat-input').value = '';
+    
+    // Show loading state
+    const sendBtn = document.getElementById('send-btn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = '...';
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/assistant/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            addMessage(result.answer, false, result.source);
+        } else {
+            addMessage('Sorry, I encountered an error. Please try again.', false);
+        }
+    } catch (error) {
+        addMessage('Sorry, I encountered an error. Please try again.', false);
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send';
+    }
+}
+
+function askQuestion(question) {
+    sendMessage(question);
+}
+
+function resetConversation() {
+    const container = document.getElementById('chat-container');
+    container.innerHTML = `
+        <div class="chat-message assistant">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content">
+                <p>Hello! I'm your AI event assistant. I can help you with questions about your event budget, guests, timeline, and more. What would you like to know?</p>
+            </div>
+        </div>
+    `;
+}
+
+document.getElementById('chat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    sendMessage(input.value);
+});
+</script>
+{% endblock %}

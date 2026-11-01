@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Budget — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div class="header-content">
+            <h1>Budget Management</h1>
+            <p class="page-subtitle">Track expenses and manage your event budget</p>
+        </div>
+        <button onclick="showAddExpenseModal()" class="btn btn-primary">Add Expense</button>
+    </div>
+
+    <div class="budget-overview">
+        <div class="budget-card">
+            <span class="budget-label">Total Budget</span>
+            <span class="budget-value" id="total-budget">$0</span>
+        </div>
+        <div class="budget-card">
+            <span class="budget-label">Estimated</span>
+            <span class="budget-value" id="estimated-cost">$0</span>
+        </div>
+        <div class="budget-card">
+            <span class="budget-label">Actual Spent</span>
+            <span class="budget-value" id="actual-cost">$0</span>
+        </div>
+        <div class="budget-card">
+            <span class="budget-label">Remaining</span>
+            <span class="budget-value" id="remaining-budget">$0</span>
+        </div>
+    </div>
+
+    <div class="budget-progress">
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="budget-progress" style="width: 0%"></div>
+        </div>
+        <p class="progress-text"><span id="utilization-percent">0%</span> of budget utilized</p>
+    </div>
+
+    <div class="expenses-section">
+        <h2>Expenses</h2>
+        <div id="expenses-list" class="expenses-list">
+            <div class="loading-state">Loading expenses...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div id="expense-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Expense</h2>
+            <button onclick="closeExpenseModal()" class="modal-close">&times;</button>
+        </div>
+        <form id="expense-form">
+            <div class="form-group">
+                <label for="expense-category">Category *</label>
+                <select id="expense-category" name="category" required>
+                    <option value="">Select category</option>
+                    <option value="venue">Venue</option>
+                    <option value="food">Food & Catering</option>
+                    <option value="decoration">Decoration</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="photography">Photography/Video</option>
+                    <option value="transportation">Transportation</option>
+                    <option value="attire">Attire</option>
+                    <option value="gifts">Gifts & Favors</option>
+                    <option value="miscellaneous">Miscellaneous</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="expense-description">Description *</label>
+                <input type="text" id="expense-description" name="description" required>
+            </div>
+            <div class="form-group">
+                <label for="expense-estimated">Estimated Cost *</label>
+                <input type="number" id="expense-estimated" name="estimated_cost" required min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="expense-actual">Actual Cost</label>
+                <input type="number" id="expense-actual" name="actual_cost" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="paid"> Paid
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="closeExpenseModal()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const eventId = {{ event_id }};
+let expenses = [];
+let eventBudget = 0;
+
+async function loadBudget() {
+    try {
+        const response = await fetch(`/api/events/${eventId}`);
+        const event = await response.json();
+        
+        eventBudget = event.total_budget;
+        expenses = event.expenses;
+        
+        // Calculate totals
+        const totalEstimated = expenses.reduce((sum, e) => sum + e.estimated_cost, 0);
+        const totalActual = expenses.reduce((sum, e) => sum + (e.actual_cost || 0), 0);
+        const remaining = eventBudget - totalActual;
+        const utilization = eventBudget > 0 ? (totalActual / eventBudget * 100) : 0;
+        
+        // Update UI
+        document.getElementById('total-budget').textContent = `$${eventBudget.toLocaleString()}`;
+        document.getElementById('estimated-cost').textContent = `$${totalEstimated.toLocaleString()}`;
+        document.getElementById('actual-cost').textContent = `$${totalActual.toLocaleString()}`;
+        document.getElementById('remaining-budget').textContent = `$${remaining.toLocaleString()}`;
+        document.getElementById('utilization-percent').textContent = `${utilization.toFixed(1)}%`;
+        
+        const progressBar = document.getElementById('budget-progress');
+        progressBar.style.width = `${Math.min(utilization, 100)}%`;
+        progressBar.className = 'progress-bar ' + (utilization > 90 ? 'warning' : utilization > 100 ? 'danger' : '');
+        
+        renderExpenses();
+    } catch (error) {
+        console.error('Failed to load budget:', error);
+    }
+}
+
+function renderExpenses() {
+    const container = document.getElementById('expenses-list');
+    
+    if (expenses.length === 0) {
+        container.innerHTML = '<div class="empty-state-small">No expenses recorded yet</div>';
+        return;
+    }
+    
+    container.innerHTML = expenses.map(expense => `
+        <div class="expense-card">
+            <div class="expense-info">
+                <h3>${expense.description}</h3>
+                <p class="expense-category">${expense.category}</p>
+            </div>
+            <div class="expense-amounts">
+                <p class="expense-estimated">Est: $${expense.estimated_cost.toLocaleString()}</p>
+                <p class="expense-actual">Act: $${(expense.actual_cost || 0).toLocaleString()}</p>
+            </div>
+            <div class="expense-actions">
+                <span class="expense-status ${expense.paid ? 'paid' : 'unpaid'}">${expense.paid ? 'Paid' : 'Unpaid'}</span>
+                <button onclick="deleteExpense(${expense.id})" class="btn btn-sm btn-danger">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function deleteExpense(expenseId) {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/expenses/${expenseId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadBudget();
+        }
+    } catch (error) {
+        console.error('Failed to delete expense:', error);
+    }
+}
+
+function showAddExpenseModal() {
+    document.getElementById('expense-modal').style.display = 'block';
+}
+
+function closeExpenseModal() {
+    document.getElementById('expense-modal').style.display = 'none';
+    document.getElementById('expense-form').reset();
+}
+
+document.getElementById('expense-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    data.paid = data.paid === 'on';
+    
+    try {
+        const response = await fetch(`/api/events/${eventId}/expenses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeExpenseModal();
+            loadBudget();
+        }
+    } catch (error) {
+        console.error('Failed to add expense:', error);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', loadBudget);
+</script>
+{% endblock %}

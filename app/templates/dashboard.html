@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Welcome Back</h1>
+        <p class="dashboard-subtitle">Manage your events and track your planning progress</p>
+        <a href="/events/new" class="btn btn-primary">Create New Event</a>
+    </div>
+
+    <div id="dashboard-stats" class="stats-grid">
+        <div class="stat-card stat-loading">
+            <div class="stat-label">Total Events</div>
+            <div class="stat-value">-</div>
+        </div>
+        <div class="stat-card stat-loading">
+            <div class="stat-label">Upcoming Events</div>
+            <div class="stat-value">-</div>
+        </div>
+        <div class="stat-card stat-loading">
+            <div class="stat-label">Total Budget</div>
+            <div class="stat-value">-</div>
+        </div>
+        <div class="stat-card stat-loading">
+            <div class="stat-label">Pending Tasks</div>
+            <div class="stat-value">-</div>
+        </div>
+    </div>
+
+    <div class="dashboard-content">
+        <div class="dashboard-section">
+            <h2>Upcoming Events</h2>
+            <div id="upcoming-events" class="event-list">
+                <div class="loading-state">Loading events...</div>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h2>Quick Actions</h2>
+            <div class="quick-actions">
+                <a href="/events/new" class="action-card">
+                    <span class="action-icon">➕</span>
+                    <span class="action-label">New Event</span>
+                </a>
+                <a href="#" class="action-card" onclick="showAllEvents()">
+                    <span class="action-icon">📅</span>
+                    <span class="action-label">View All Events</span>
+                </a>
+                <a href="#" class="action-card" onclick="showReports()">
+                    <span class="action-icon">📊</span>
+                    <span class="action-label">View Reports</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="empty-state" class="empty-state" style="display: none;">
+    <div class="empty-icon">🎉</div>
+    <h2>No Events Yet</h2>
+    <p>Start planning your first celebration by creating a new event.</p>
+    <a href="/events/new" class="btn btn-primary btn-lg">Create Your First Event</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load dashboard data
+async function loadDashboard() {
+    try {
+        const response = await fetch('/api/events/dashboard/stats');
+        const data = await response.json();
+        
+        // Update stats
+        const statsContainer = document.getElementById('dashboard-stats');
+        statsContainer.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-label">Total Events</div>
+                <div class="stat-value">${data.total_events}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Upcoming Events</div>
+                <div class="stat-value">${data.upcoming_events}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Budget</div>
+                <div class="stat-value">$${data.total_budget.toLocaleString()}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Pending Tasks</div>
+                <div class="stat-value">${data.pending_tasks}</div>
+            </div>
+        `;
+        
+        // Update upcoming events
+        const eventsContainer = document.getElementById('upcoming-events');
+        if (data.upcoming_events_list.length === 0) {
+            eventsContainer.innerHTML = '<div class="empty-state-small">No upcoming events</div>';
+        } else {
+            eventsContainer.innerHTML = data.upcoming_events_list.map(event => `
+                <div class="event-card-mini">
+                    <div class="event-info">
+                        <h3>${event.name}</h3>
+                        <p class="event-meta">${new Date(event.date).toLocaleDateString()} · ${event.category.replace('_', ' ')}</p>
+                    </div>
+                    <a href="/events/${event.id}" class="btn btn-sm btn-secondary">View</a>
+                </div>
+            `).join('');
+        }
+        
+        // Show empty state if no events
+        if (data.total_events === 0) {
+            document.querySelector('.dashboard-container').style.display = 'none';
+            document.getElementById('empty-state').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Failed to load dashboard:', error);
+    }
+}
+
+function showAllEvents() {
+    // For now, reload to show all events
+    window.location.href = '/dashboard';
+}
+
+function showReports() {
+    alert('Reports feature coming soon!');
+}
+
+// Load dashboard on page load
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

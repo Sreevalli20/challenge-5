@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Event Details — CELEBRATE{% endblock %}
+
+{% block content %}
+<div class="event-detail-container">
+    <div class="event-detail-header">
+        <div class="header-content">
+            <h1 id="event-name">Loading...</h1>
+            <p id="event-meta" class="event-meta">Loading...</p>
+        </div>
+        <div class="header-actions">
+            <a href="/events/{{ event_id }}/edit" class="btn btn-secondary">Edit Event</a>
+            <button onclick="generatePlan()" class="btn btn-primary">Generate AI Plan</button>
+        </div>
+    </div>
+
+    <div class="event-tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="guests" onclick="window.location.href='/events/{{ event_id }}/guests'">Guests</button>
+        <button class="tab-btn" data-tab="budget" onclick="window.location.href='/events/{{ event_id }}/budget'">Budget</button>
+        <button class="tab-btn" data-tab="timeline" onclick="window.location.href='/events/{{ event_id }}/timeline'">Timeline</button>
+        <button class="tab-btn" data-tab="invitations" onclick="window.location.href='/events/{{ event_id }}/invitations'">Invitations</button>
+        <button class="tab-btn" data-tab="assistant" onclick="window.location.href='/events/{{ event_id }}/assistant'">AI Assistant</button>
+    </div>
+
+    <div id="tab-overview" class="tab-content active">
+        <div class="event-grid">
+            <div class="event-section">
+                <h2>Event Information</h2>
+                <div id="event-info" class="info-grid">
+                    <div class="loading-state">Loading...</div>
+                </div>
+            </div>
+
+            <div class="event-section">
+                <h2>Quick Stats</h2>
+                <div id="quick-stats" class="stats-grid-mini">
+                    <div class="loading-state">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="event-section">
+            <h2>AI Plan</h2>
+            <div id="ai-plan-section">
+                <div id="no-plan" class="empty-state-small">
+                    <p>No AI plan generated yet. Click "Generate AI Plan" to create a comprehensive event plan.</p>
+                </div>
+                <div id="plan-content" style="display: none;">
+                    <!-- Plan content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const eventId = {{ event_id }};
+
+async function loadEvent() {
+    try {
+        const response = await fetch(`/api/events/${eventId}`);
+        const event = await response.json();
+        
+        // Update header
+        document.getElementById('event-name').textContent = event.name;
+        document.getElementById('event-meta').textContent = 
+            `${new Date(event.date).toLocaleDateString()} at ${event.time} · ${event.category.replace('_', ' ')}`;
+        
+        // Update event info
+        document.getElementById('event-info').innerHTML = `
+            <div class="info-item">
+                <span class="info-label">Location</span>
+                <span class="info-value">${event.location}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Guest Count</span>
+                <span class="info-value">${event.guest_count}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Budget</span>
+                <span class="info-value">${event.currency} ${event.total_budget.toLocaleString()}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Theme</span>
+                <span class="info-value">${event.theme || 'Not specified'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Indoor/Outdoor</span>
+                <span class="info-value">${event.indoor_outdoor || 'Not specified'}</span>
+            </div>
+        `;
+        
+        // Update quick stats
+        document.getElementById('quick-stats').innerHTML = `
+            <div class="stat-mini">
+                <span class="stat-label">Guests</span>
+                <span class="stat-value">${event.guest_stats.total}</span>
+                <span class="stat-sub">${event.guest_stats.confirmed} confirmed</span>
+            </div>
+            <div class="stat-mini">
+                <span class="stat-label">Budget Used</span>
+                <span class="stat-value">${event.budget_stats.utilization_percent.toFixed(1)}%</span>
+                <span class="stat-sub">${event.currency} ${event.budget_stats.total_actual.toLocaleString()}</span>
+            </div>
+            <div class="stat-mini">
+                <span class="stat-label">Tasks</span>
+                <span class="stat-value">${event.task_stats.completed}/${event.task_stats.total}</span>
+                <span class="stat-sub">${event.task_stats.pending} pending</span>
+            </div>
+        `;
+        
+        // Show AI plan if available
+        if (event.ai_plan) {
+            document.getElementById('no-plan').style.display = 'none';
+            document.getElementById('plan-content').style.display = 'block';
+            document.getElementById('plan-content').innerHTML = renderPlan(event.ai_plan);
+        }
+    } catch (error) {
+        console.error('Failed to load event:', error);
+    }
+}
+
+async function generatePlan() {
+    try {
+        const response = await fetch(`/api/events/${eventId}/generate-plan`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('no-plan').style.display = 'none';
+            document.getElementById('plan-content').style.display = 'block';
+            document.getElementById('plan-content').innerHTML = renderPlan(result.plan);
+            alert(`Event plan generated successfully using ${result.source}!`);
+        } else {
+            alert('Failed to generate plan: ' + result.detail);
+        }
+    } catch (error) {
+        alert('Failed to generate plan: ' + error.message);
+    }
+}
+
+function renderPlan(plan) {
+    return `
+        <div class="plan-section">
+            <h3>Event Concept</h3>
+            <p>${plan.event_concept}</p>
+        </div>
+        <div class="plan-section">
+            <h3>Recommended Theme</h3>
+            <p>${plan.recommended_theme}</p>
+        </div>
+        <div class="plan-section">
+            <h3>Venue Requirements</h3>
+            <p>${plan.venue_requirements}</p>
+        </div>
+        <div class="plan-section">
+            <h3>Budget Allocation</h3>
+            <div class="budget-allocation">
+                ${Object.entries(plan.budget_allocation).map(([key, value]) => `
+                    <div class="allocation-item">
+                        <span class="allocation-label">${key.replace('_', ' ')}</span>
+                        <span class="allocation-value">${value}%</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        <div class="plan-section">
+            <h3>Preparation Timeline</h3>
+            ${plan.preparation_timeline.map(phase => `
+                <div class="timeline-phase">
+                    <h4>${phase.phase} (${phase.timeframe})</h4>
+                    <ul>
+                        ${phase.tasks.map(task => `<li>${task}</li>`).join('')}
+                    </ul>
+                </div>
+            `).join('')}
+        </div>
+        <div class="plan-section">
+            <h3>Shopping Checklist</h3>
+            <ul>
+                ${plan.shopping_checklist.map(item => `<li>${item}</li>`).join('')}
+            </ul>
+        </div>
+        <div class="plan-section">
+            <h3>Risk Considerations</h3>
+            <ul>
+                ${plan.risk_considerations.map(risk => `<li>${risk}</li>`).join('')}
+            </ul>
+        </div>
+        <div class="plan-section">
+            <h3>Personalized Recommendations</h3>
+            <ul>
+                ${plan.personalized_recommendations.map(rec => `<li>${rec}</li>`).join('')}
+            </ul>
+        </div>
+    `;
+}
+
+// Load event on page load
+document.addEventListener('DOMContentLoaded', loadEvent);
+</script>
+{% endblock %}
